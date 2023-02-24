@@ -1,6 +1,6 @@
 Description
 ============
-Electric Appliance control using Microcontroller with UART Interface.
+Embedded C Program for Electric Appliance power control using AT89C51 Microcontroller with UART Interface.
 
 CAUTION:
 ========
