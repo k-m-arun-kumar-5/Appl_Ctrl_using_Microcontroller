@@ -1,0 +1,5 @@
+".\Objects\STARTUP.obj",
+".\Objects\main.obj",
+".\Objects\uart.obj" 
+TO ".\Objects\UART_Appl_Ctrl" 
+PRINT(".\Listings\UART_Appl_Ctrl.m51")
