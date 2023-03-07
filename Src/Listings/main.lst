@@ -1,1 +1,327 @@
+C51 COMPILER V9.60.0.0   MAIN                                                              09/21/2022 09:17:30 PAGE 1   
 
+
+C51 COMPILER V9.60.0.0, COMPILATION OF MODULE MAIN
+OBJECT MODULE PLACED IN .\Objects\main.obj
+COMPILER INVOKED BY: C:\Keil_v5\C51\BIN\C51.EXE main.c OPTIMIZE(8,SPEED) BROWSE DEBUG OBJECTEXTEND PRINT(.\Listings\main
+                    -.lst) TABS(2) OBJECT(.\Objects\main.obj)
+
+line level    source
+
+   1          /* ********************************************************************
+   2          FILE                   : main.c
+   3          
+   4          PROGRAM DESCRIPTION    : Program for the 8051 serial terminal command based home automation by controlling
+             - appliances 
+   5                                   Command - 1: FAN  1 - ON  , 2: FAN  1 - OFF,  
+   6                                 3: LAMP 1 - ON  , 4: LAMP 1 - OFF  
+   7                                             5: TV   1 - ON  , 6: TV   1 - OFF             
+   8             
+   9          AUTHOR                : K.M. Arun Kumar alias Arunkumar Murugeswaran
+  10             
+  11          KNOWN BUGS            : 
+  12          
+  13          NOTE                  :       
+  14                                              
+  15          CHANGE LOGS           : 
+  16          
+  17          *****************************************************************************/
+  18          
+  19          #include "main.h"
+  20          static char *ble_rcvd_str; 
+  21          static unsigned char ble_rcvd_str_num_chars;
+  22          unsigned int UART_Menu();
+  23          unsigned int BLE_Cmd_Proc();
+  24          void GPIO_Init();
+  25          /*------------------------------------------------------------*-
+  26          FUNCTION NAME  : main
+  27          
+  28          DESCRIPTION    :          
+  29                          
+  30          INPUT          : none
+  31          
+  32          OUTPUT         : 
+  33          
+  34          NOTE           : 
+  35          -*------------------------------------------------------------*/
+  36          
+  37          void main(void)
+  38          {
+  39   1         /* ========= begin : USER CODE INITIALIZE ========== */
+  40   1      
+  41   1         GPIO_Init(); 
+  42   1         UART_Init(); 
+  43   1         UART_Menu();
+  44   1        
+  45   1         /* ========= end : USER CODE INITIALIZE ========== */
+  46   1           
+  47   1           while(1) // Super Loop
+  48   1           {
+  49   2            while(uart_data.rcvd_terminator_char_flag == STATE_NO);
+  50   2                UART_Read(&ble_rcvd_str, &ble_rcvd_str_num_chars);
+  51   2            UART_Tx_Str("Entered BLE CMD : ");
+  52   2                UART_Tx_Str(ble_rcvd_str);
+  53   2            UART_Tx_Str("\r\r");
+C51 COMPILER V9.60.0.0   MAIN                                                              09/21/2022 09:17:30 PAGE 2   
+
+  54   2                if(((BLE_Cmd_Proc()) != SUCCESS))
+  55   2            {
+  56   3              ;
+  57   3            }       
+  58   2            UART_Menu(); 
+  59   2         }     
+  60   1         return; 
+  61   1      }
+  62          
+  63          /*------------------------------------------------------------*-
+  64          FUNCTION NAME  : GPIO_Init
+  65          
+  66          DESCRIPTION    :          
+  67                          
+  68          INPUT          : none
+  69          
+  70          OUTPUT         : 
+  71          
+  72          NOTE           : 
+  73          -*------------------------------------------------------------*/
+  74          void GPIO_Init()
+  75          {
+  76   1         ERROR_LED = 0;         //output for MCU  
+  77   1           LAMP_01_LED = 0;
+  78   1         FAN_01_LED = 0;
+  79   1         TV_01_LED = 0;
+  80   1         DRIVER_LAMP_01 = 0;
+  81   1           DRIVER_FAN_01 = 0;
+  82   1         DRIVER_TV_01 = 0;
+  83   1         
+  84   1         ERROR_LED = STATE_OFF;
+  85   1         LAMP_01_LED = STATE_OFF;
+  86   1         FAN_01_LED = STATE_OFF;
+  87   1         TV_01_LED = STATE_OFF;
+  88   1         DRIVER_LAMP_01 = STATE_OFF;
+  89   1         DRIVER_FAN_01 = STATE_OFF;
+  90   1         DRIVER_TV_01 = STATE_OFF; 
+  91   1        //test ok
+  92   1        /* DRIVER_FAN_01 = STATE_ON;
+  93   1         DRIVER_LAMP_01 = STATE_ON; 
+  94   1         DRIVER_TV_01 = STATE_ON */
+  95   1         return;
+  96   1      }  
+  97          /*------------------------------------------------------------*
+  98          FUNCTION NAME  : UART_Menu
+  99          
+ 100          DESCRIPTION    :
+ 101                          
+ 102          INPUT          : 
+ 103          
+ 104          OUTPUT         : 
+ 105          
+ 106          NOTE           : 
+ 107          
+ 108          Func ID        :   
+ 109          -*------------------------------------------------------------*/
+ 110          unsigned int UART_Menu()
+ 111          {
+ 112   1          UART_Reset_Datas(UART_RESET_ALL_DATAS);
+ 113   1          ble_rcvd_str_num_chars = 0;
+ 114   1          UART_Tx_Str("MENU: 1: FAN  1 - ON  , 2: FAN  1 - OFF \r");
+ 115   1          UART_Tx_Str("      3: LAMP 1 - ON  , 4: LAMP 1 - OFF \r");
+C51 COMPILER V9.60.0.0   MAIN                                                              09/21/2022 09:17:30 PAGE 3   
+
+ 116   1          UART_Tx_Str("      5: TV   1 - ON  , 6: TV   1 - OFF \r");
+ 117   1          UART_Tx_Char('\r');
+ 118   1            UART_Tx_Str("INPUT: Enter BLE CMD : ");  
+ 119   1            return SUCCESS; 
+ 120   1      }
+ 121          
+ 122          /*------------------------------------------------------------*
+ 123          FUNCTION NAME  : BLE_Cmd_Proc
+ 124          
+ 125          DESCRIPTION    :
+ 126                          
+ 127          INPUT          : 
+ 128          
+ 129          OUTPUT         : 
+ 130          
+ 131          NOTE           : 
+ 132          
+ 133          Func ID        :   
+ 134          -*------------------------------------------------------------*/
+ 135          unsigned int BLE_Cmd_Proc()
+ 136          {
+ 137   1        static char lamp_str[] = "LAMP ", fan_str[] = "FAN ", tv_str[] = "TV", on_str[] = " ON", off_str[] = " OF
+             -F";
+ 138   1        static char appl_id[] = {'1'};      
+ 139   1        if(ble_rcvd_str_num_chars > 1)
+ 140   1        {
+ 141   2          UART_Tx_Str("ERR: Rcvd BLE Str len \r");
+ 142   2          return ERR_DATA_NOT_IN_RANGE;
+ 143   2        }
+ 144   1        ERROR_LED = STATE_OFF;
+ 145   1        switch(ble_rcvd_str[0])
+ 146   1        {
+ 147   2          case '1':
+ 148   2             DRIVER_FAN_01 = STATE_ON; 
+ 149   2             FAN_01_LED = STATE_ON;        
+ 150   2             UART_Tx_Str(fan_str);
+ 151   2             UART_Tx_Char(appl_id[0]); 
+ 152   2             UART_Tx_Str(on_str);
+ 153   2          break;
+ 154   2          case '2':
+ 155   2             DRIVER_FAN_01 = STATE_OFF;
+ 156   2                 FAN_01_LED = STATE_OFF;  
+ 157   2             UART_Tx_Str(fan_str);
+ 158   2             UART_Tx_Char(appl_id[0]); 
+ 159   2             UART_Tx_Str(off_str);
+ 160   2          break;
+ 161   2          case '3':
+ 162   2             DRIVER_LAMP_01 = STATE_ON;
+ 163   2             LAMP_01_LED = STATE_ON;
+ 164   2             UART_Tx_Str(lamp_str);
+ 165   2             UART_Tx_Char(appl_id[0]); 
+ 166   2             UART_Tx_Str(on_str);
+ 167   2          break;
+ 168   2          case '4':
+ 169   2             DRIVER_LAMP_01 = STATE_OFF; 
+ 170   2             LAMP_01_LED = STATE_OFF;
+ 171   2             UART_Tx_Str(lamp_str);
+ 172   2             UART_Tx_Char(appl_id[0]); 
+ 173   2             UART_Tx_Str(off_str);
+ 174   2          break;  
+ 175   2              case '5':
+ 176   2             DRIVER_TV_01 = STATE_ON; 
+C51 COMPILER V9.60.0.0   MAIN                                                              09/21/2022 09:17:30 PAGE 4   
+
+ 177   2             TV_01_LED = STATE_ON;
+ 178   2             UART_Tx_Str(tv_str);
+ 179   2             UART_Tx_Char(appl_id[0]); 
+ 180   2             UART_Tx_Str(on_str);
+ 181   2          break;   
+ 182   2          case '6':
+ 183   2             DRIVER_TV_01 = STATE_OFF; 
+ 184   2             TV_01_LED = STATE_OFF;
+ 185   2             UART_Tx_Str(tv_str);
+ 186   2             UART_Tx_Char(appl_id[0]); 
+ 187   2             UART_Tx_Str(off_str);
+ 188   2          break;   
+ 189   2          default:
+ 190   2             UART_Tx_Str("ERR: Invalid BLE cmd \r\r");
+ 191   2             ERROR_LED = STATE_ON; 
+ 192   2             return ERR_DATA_NOT_IN_RANGE;
+ 193   2        } 
+ 194   1          UART_Tx_Str("\r\r");  
+ 195   1        return SUCCESS; 
+ 196   1      }
+ 197          
+ 198          /*------------------------------------------------------------*
+ 199          FUNCTION NAME  : Interrupt_Init
+ 200          
+ 201          DESCRIPTION    :
+ 202                          
+ 203          INPUT          : 
+ 204          
+ 205          OUTPUT         : 
+ 206          
+ 207          NOTE           : 
+ 208          
+ 209          Func ID        :   
+ 210          -*------------------------------------------------------------*/
+ 211          void Global_Interrupt_Enable()
+ 212          {
+ 213   1        EA = 1;
+ 214   1          return;   
+ 215   1      }
+ 216          
+ 217          /*------------------------------------------------------------*
+ 218          FUNCTION NAME  : Delay_in_Micro_Sec
+ 219          
+ 220          DESCRIPTION    :
+ 221                          
+ 222          INPUT          : 
+ 223          
+ 224          OUTPUT         : 
+ 225          
+ 226          NOTE           : 
+ 227          
+ 228          Func ID        :   
+ 229          -*------------------------------------------------------------*/
+ 230          void Delay_in_Micro_Sec(const unsigned long num_micro_seconds)
+ 231          {
+ 232   1        unsigned int i = 0;
+ 233   1        
+ 234   1        for (i = 0;  i < num_micro_seconds; ++i);
+ 235   1        return;   
+ 236   1      }
+ 237          
+ 238          /*------------------------------------------------------------*
+C51 COMPILER V9.60.0.0   MAIN                                                              09/21/2022 09:17:30 PAGE 5   
+
+ 239          FUNCTION NAME  : Delay_in_Milli_Sec
+ 240          
+ 241          DESCRIPTION    :
+ 242                          
+ 243          INPUT          : 
+ 244          
+ 245          OUTPUT         : 
+ 246          
+ 247          NOTE           : 
+ 248          
+ 249          Func ID        :   
+ 250          -*------------------------------------------------------------*/
+ 251          void Delay_in_Milli_Sec(const unsigned long num_milli_seconds)
+ 252          {
+ 253   1        unsigned int i = 0;
+ 254   1        
+ 255   1        for (i = 0;  i < num_milli_seconds; ++i)
+ 256   1          Delay_in_Micro_Sec(MAX_NUM_CNT_MILLI_SEC);
+ 257   1        return; 
+ 258   1      }
+ 259          
+ 260          /*------------------------------------------------------------*
+ 261          FUNCTION NAME  : Str_Fill_Char
+ 262          
+ 263          DESCRIPTION    :
+ 264                          
+ 265          INPUT          : 
+ 266          
+ 267          OUTPUT         : 
+ 268          
+ 269          NOTE           : 
+ 270          
+ 271          Func ID        :    
+ 272          -*------------------------------------------------------------*/
+ 273          unsigned int Str_Fill_Char(char *const dest_str, const unsigned char num_chars, const char fill_char)
+ 274          {
+ 275   1        unsigned char index;
+ 276   1        
+ 277   1        if(dest_str == NULL_PTR || num_chars > STR_MAX_NUM_CHARS)
+ 278   1        {
+ 279   2          UART_Tx_Str("ERR: Str_Fill\r");
+ 280   2          return ERR_INVALID_DATA;
+ 281   2        }
+ 282   1        for (index = 0 ; index < num_chars ; ++index)
+ 283   1           *(dest_str + index)  = fill_char;
+ 284   1          *(dest_str + index) = NULL_CHAR;
+ 285   1        
+ 286   1        return SUCCESS;
+ 287   1      }
+ 288          
+ 289          /*------------------------------------------------------------------*-
+ 290            ---- END OF FILE -------------------------------------------------
+ 291          -*------------------------------------------------------------------*/   
+
+
+MODULE INFORMATION:   STATIC OVERLAYABLE
+   CODE SIZE        =    520    ----
+   CONSTANT SIZE    =    235    ----
+   XDATA SIZE       =   ----    ----
+   PDATA SIZE       =   ----    ----
+   DATA SIZE        =     28      15
+   IDATA SIZE       =   ----    ----
+C51 COMPILER V9.60.0.0   MAIN                                                              09/21/2022 09:17:30 PAGE 6   
+
+   BIT SIZE         =   ----    ----
+END OF MODULE INFORMATION.
+
+
+C51 COMPILATION COMPLETE.  0 WARNING(S),  0 ERROR(S)
